@@ -1,0 +1,103 @@
+## Fight The Corruption - DigitalOverdose CTF -2022
+
+We are given a corrupted pem file.we cant extract the contents of it.<br>
+lets take a closer look.
+```
+MIISQwIBADANBgkqhkiG9w0BAQEFAASCEi0wghIpAgEAAoIEAQDBj9tC5lFsdeyW
+WE2G+VoXMVBPfLK6K1ngmRigKmM3c4w8EwLrKWH73YBl8vtdINhRpQ5AxFVIgLqy
+WJbC0LYwN8XJkwFTCKBSHvdEOOpqNSR7PvNVvrQ3+R0uIwQxN2UuQav4RdV0GsWH
+qPTSiuYaZWxTV/VzJJdbYlQZ3PktBQDZ6ftKEcKvOWNEqaqlKtvcJozya9CXIWB8
+qepviupDsrKgXlAQe0RVlmhQ1WKnp0ilcntJsQrb1hZfTkQnuNWtP5N9DcIY41ev
+moZTIzBi/W2tagtbcLGU+Tvzmw6lATlw7WM2M8vQDBTus8CCciQZrIb+UKjxQyaY
+crfjAmgs2uZnR/BP3HFHmDyTffLS5GdugUnarvgtnycs33IJHV6s+1/Vnyb653rA
+c8ZazU34SznXKTPDmFRTm62l+LGo4FFRzDNdYaItzfMy/qQsEZYhYjWEasP+w+A/
+B8WKmqSLrq8dYgB5NeAmNZtMja😈fhWnreGFX0Q4AwlJs2eUKsAMSsz2dI95SH4IW
+S73xJw/k6m3JlWnklqiVOsucxs3zW/9NIM6fmFH1QeT6mNRvRe19tkYQce9ceHKt
+4bvzqateA+/8TAGKTmRcbCXYEtsqiGtaeX8LD5BZDQdlEckGF1RPMUSSctOKKGyI
+tEBv4h30wBhy5xhu5bERsdD85mZzfpyN/z+Oa0Vcbq+P6J77kBcqgn2Bl6Qr9jry
+/XhQqj6xD7xNZIVYemXZukdz3T1X21q1VaryHC3IrvIYGuo/IO9eSlGDTHnToJw6
+V8y7LXNHxrN0TqzI9HdId6MHprOtdAqXaITdPMJK9ycFnWldeQc9tVxdgzNPWevX
+xVhv9GMz9c36ObT05FM2ud2Kn0K9EZnjRPEnO4bYhxmHSOy4t5iQC14ZjyFwVI45
+RzUMAB6cawFdL74cYWmBO6g1+JNtcefyM+SIRbHI9I3XbwYjvA6U2+/Dzu1cPt0t
+----------Truncated----------
+```
+We can see a emote inside the string of the pem file.I think that part of the pem file is corrupted.so lets replace the emote with a random letter.
+<br>
+Similar Chall:<br>
+[https://connor-mccartney.github.io/space%20heroes%20ctf/2012/12/30/spaceheros2022/](Link)
+<br>
+we need to know a bit about asn.1 syntax and integer header.
+ASN.1 integer headers have the format 0282xxxx.  
+(02 means integer data type, 82 means the following 2 bytes represent  
+the size of the integer, and xxxx is the following 2 bytes.)
+<br>
+More info:<br>
+[https://letsencrypt.org/docs/a-warm-welcome-to-asn1-and-der/](Link)
+<br>
+now we convert the string into hex and find the headers.
+we will use the grep command.
+<br>
+`cat hex.txt | grep "0282"`
+<br>
+![image.png](https://cdn.hashnode.com/res/hashnode/image/upload/v1651859032696/da2_GRuf6.png align="left")
+<br>
+Inbetween headers are the integer values in the pem file. we know that some values are corrupted. so we take every value and check if it is prime. if it is then we can construct the private key and retrieve the message.
+We get exactly two values that are prime. it must be p,q.<br>
+
+Script.py:
+```py
+from base64 import b64decode
+from Crypto.Util.number import *
+import pyasn1.codec.der.encoder
+import pyasn1.type.univ
+import base64
+
+f = open("SECRET.enc",'rb')
+ct = f.read()
+#print(ct)
+k = open('1.pem','r')
+key = k.read()
+print(key)
+kk = """MIISQwIBADANBgkqhkiG9w0BAQEFAASCEi0wghIpAgEAAoIEAQDBj9tC5lFsdeyW
+WE2G+VoXMVBPfLK6K1ngmRigKmM3c4w8EwLrKWH73YBl8vtdINhRpQ5AxFVIgLqy
+WJbC0LYwN8XJkwFTCKBSHvdEOOpqNSR7PvNVvrQ3+R0uIwQxN2UuQav4RdV0GsWH
+qPTSiuYaZWxTV/VzJJdbYlQZ3PktBQDZ6ftKEcKvOWNEqaqlKtvcJozya9CXIWB8
+qepviupDsrKgXlAQe0RVlmhQ1WKnp0ilcntJsQrb1hZfTkQnuNWtP5N9DcIY41ev
+LOj+GOlyxE1aryJkRzYqRpfIt6yy8ee/s5MRSpUovWy99VeoiSUnwQHYy9xTgr+i
+aHi4r/MZ1LzlYS9fGWNTxRxJb0R3aSXhGsAWbm9zXXDiJvwwtgwN0ylyvbp7lpaF
+UstLCVEvI/HaaakXNqBV9lSKlcnallVpxLL2hwWD/29IYdn6XTYphua6y3Zo8TRk
+GrahnMvzstvY7Idkh/Q5ukSyysN98YM+OZ1nMagt23Fjqp3XonyRk2ArpVEpielQ
+gkpOuDembNeVgAttAO6ZeqcUjWqjlgvy8AotqXcmYG9hQ86UMwhHxqvrGBNDQt5t
+U+iJexKsZZuGea0SjIeeJMGUn0/n6tuU7sIXYbBNY6vvjqZu4UN5LEUXVkOJJuAQ
+moZTIzBi/W2tagtbcLGU+Tvzmw6lATlw7WM2M8vQDBTus8CCciQZrIb+UKjxQyaY
+crfjAmgs2uZnR/BP3HFHmDyTffLS5GdugUnarvgtnycs33IJHV6s+1/Vnyb653rA
+c8ZazU34SznXKTPDmFRTm62l+LGo4FFRzDNdYaItzfMy/qQsEZYhYjWEasP+w+A/
+B8WKmqSLrq8dYgB5NeAmNZtMja😈fhWnreGFX0Q4AwlJs2eUKsAMSsz2dI95SH4IW
+S73xJw/k6m3JlWnklqiVOsucxs3zW/9NIM6fmFH1QeT6mNRvRe19tkYQce9ceHKt
+4bvzqateA+/8TAGKTmRcbCXYEtsqiGtaeX8LD5BZDQdlEckGF1RPMUSSctOKKGyI
+tEBv4h30wBhy5xhu5bERsdD85mZzfpyN/z+Oa0Vcbq+P6J77kBcqgn2Bl6Qr9jry
+/XhQqj6xD7xNZIVYemXZukdz3T1X21q1VaryHC3IrvIYGuo/IO9eSlGDTHnToJw6
+V8y7LXNHxrN0TqzI9HdId6MHprOtdAqXaITdPMJK9ycFnWldeQc9tVxdgzNPWevX
+xVhv9GMz9c36ObT05FM2ud2Kn0K9EZnjRPEnO4bYhxmHSOy4t5iQC14ZjyFwVI45
+RzUMAB6cawFdL74cYWmBO6g1+JNtcefyM+SIRbHI9I3XbwYjvA6U2+/Dzu1cPt0t
+OPjEhqsVAgMBAAECggQAC/25e5+BE9MKYRX/V4lDB4TKkOIMwHPHEZ7qY6G8m8bQ
+vTgASkk6BLxoI+i1ocNTI1uyUljXX7J53mqWjGMZpksOObqdrmMua2f3sYZFH2dD
+---------Truncated---------
+""".replace('😈','a')
+
+extract_hex = hex(bytes_to_long(b64decode(kk)))[2:]
+p=0x0f89ca7d0eeafe127c289b259be56727dc1d5c0cfdbe428ea3dda350fb80200304da16bc84672212265fc5953eb42e5a3cdb5734523add2ea75f4275bde86adc57fec60206639997e83f3c7bcabde1d60c413d8a60d114a63d95d451e6167a38ec16de15d0bee11bb3347de0b787ef3e2f85f7fde0a8a8e6c9862471d2d9c86f050c0f583419d4d5f77ba0f2a1a0e5c1bf85e87d665e37dcce00bf99efbe376eb129824e1cbfa733d1de0e408bb1bfc341ebf52d94cc1f4f77b890c1b64408f690ff298277919dcd8ad2bbc89e1f5468f8f40ea10c8ab797eb5287f9b45267768024343ebacd38e9e91b9b1a9b73e94391c94c837dc5c8b7f4125a9ae7012588786b7527d3e12aa49436e8eb50bfa75652e082c51eb0d466074fa67a517b9547a171c4a70d0955914f46d1d43c0d842ef6be387aaf469489d99c77d0c7e60d096ae9152120d7cd1407ac8d8ece2d060a8215684e449eba50cd325857e9a0fe4cba526914593be0c29ac0b563426e2280d3d656be87d2b24dccaa0bb7731500fd6dc64f96362d7d444513772686ac6cbe0f846cb467950c246696ecea24caa160c75e9d38d0bf067899fd9b26c61a284b5ffb9fa855071489d9edd56b58bffb897c7c9b91de5ae41222951a88f4ded7532432edb380e7c2c4a3be6aa443138985993441188eac0fbccfd29c4c373b355f3b530ffdb2f3aa9cef3530f6b03664a5f
+q=0x0c75066d2b55903fc288d9bb15f46f52bae966bf2ee014b1d2fab4cc9698cb485b1394068d4ccf34bc26a762f8c9a3af8e967f6815c70da8dd4e2fd6b288e62b9eb2ea775271cad3e52ae205db5558e5ff50967f6c8173ff4e6c103109917cd5c4ea95b438d504d3c5cf7c5bd90c3caf8c97383d1247e162dcdd234cd5c679ea04df0a85d902b26496da8fa278b677f70136abb5bd2758a194a5c25f0d94a5e65c207f162f357b6ee6b55188763c0f8ca510b4cb6f4fe3019b1eb2cf3a5088b359da0de0471955b2719f498f87cdf1523198370828b0595883f716e3dc326ba8217bc147ebf9f4e87837459254930066586283802c8f8b666ea925640308b990b8a5bc3731b9d97fc6b36eaf02a45203efbb40c729d4b825ac0cefdb5dca1b7ae8acdf691198055a90d263278ba9d0067ebed73fbf57552841a1ac3f00bd90731e63b26716a1f359bbf93dd898313eb930992422bae925b37856abe5e5d40e007e62d6397becce9d5c814341d3ddeb38c2b8f474ff5b185eedcc145425b5aa116820253ffb00a088ea8bb6fc7414b603a05d7c81cadd8e3515b92dd73a6c2a7cbfdaa226d461ad5774d9b30b0f16bff63878709dae839962d50ae17ea2019e96a2fe18fee28eb2e38d4f45f69737c92c4a9390574057c7d54e87bfe3983189e928d9aa53d8f65b02a321b797207ba200b30a7c7b859b6832d137e65203353270b
+p = int(p)
+q =int(q)
+n =p*q
+e =65537
+ct =bytes_to_long(ct)
+print(ct)
+d1 =inverse(e,(p-1)*(q-1))
+print(long_to_bytes(pow(ct,d1,n)))
+```
+<br>
+Flag:<br>
+`DOCTF{1M4G1N3_TH1S_W0ULD_H4PP3N_1N_PR0DUCTI0N}
+`
