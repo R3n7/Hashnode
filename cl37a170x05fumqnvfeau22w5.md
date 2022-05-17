@@ -1,6 +1,6 @@
 ## LC patterns - Sliding Window 1
 
-Let's start this post with a Programming Question , How do u find average of all contigous subarrays of size 'k' in a given array.
+Let's start this post with a Programming Question , How do you find average of all contigous subarrays of size 'k' in a given array.
 
 To lay it out in a simple way,
 Find the average of next k elements in the array.
